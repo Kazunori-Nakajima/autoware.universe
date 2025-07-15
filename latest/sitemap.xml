@@ -626,6 +626,11 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://autowarefoundation.github.io/autoware_universe/latest/perception/autoware_tensorrt_bevdet/</loc>
+         <lastmod>2025-07-15</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://autowarefoundation.github.io/autoware_universe/latest/perception/autoware_tensorrt_classifier/</loc>
          <lastmod>2025-07-15</lastmod>
          <changefreq>daily</changefreq>
