@@ -64,11 +64,15 @@ public:
   rclcpp::Publisher<UserDefinedValue>::SharedPtr getPublisher(const std::string & topic);
 
 private:
+  bool isInDiagnosticList(const std::string & diag_name) const;
+
   // ROS
   std::vector<rclcpp::Subscription<MetricArray>::SharedPtr> metrics_sub_;
   rclcpp::Subscription<DiagnosticArray>::SharedPtr diagnostics_sub_;
 
   std::unordered_map<std::string, rclcpp::Publisher<UserDefinedValue>::SharedPtr> params_pub_;
+  
+  std::unordered_map<std::string, std::vector<std::string>> diagnostic_aggregation_map_;
 };
 }  // namespace autoware::scenario_simulator_v2_adapter
 

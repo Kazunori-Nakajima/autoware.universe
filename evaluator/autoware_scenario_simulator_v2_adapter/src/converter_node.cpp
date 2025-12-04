@@ -14,6 +14,9 @@
 
 #include "autoware/scenario_simulator_v2_adapter/converter_node.hpp"
 
+#include <yaml-cpp/yaml.h>
+
+#include <algorithm>
 #include <regex>
 #include <string>
 #include <vector>
@@ -37,6 +40,43 @@ MetricConverter::MetricConverter(const rclcpp::NodeOptions & node_options)
 : Node("scenario_simulator_v2_adapter", node_options)
 {
   using std::placeholders::_1;
+
+  // Load diagnostic groups from YAML file
+  std::string yaml_path;
+  if (has_parameter("diagnostic_config_file") && 
+      get_parameter("diagnostic_config_file", yaml_path) && 
+      !yaml_path.empty()) {
+    try {
+      YAML::Node config = YAML::LoadFile(yaml_path);
+      YAML::Node params = config["/**"]["ros__parameters"];
+      
+      if (params["diagnostic_groups"]) {
+        for (const auto & group : params["diagnostic_groups"]) {
+          if (!group["output_topic_name"] || !group["aggregation_list"]) {
+            continue;
+          }
+          
+          std::string output_topic = group["output_topic_name"].as<std::string>();
+          std::vector<std::string> aggregation_list;
+          
+          for (const auto & item : group["aggregation_list"]) {
+            aggregation_list.push_back(item.as<std::string>());
+          }
+          
+          diagnostic_aggregation_map_[output_topic] = aggregation_list;
+        }
+        
+        RCLCPP_INFO(
+          get_logger(), 
+          "Loaded %zu diagnostic groups from %s", 
+          diagnostic_aggregation_map_.size(), 
+          yaml_path.c_str()
+        );
+      }
+    } catch (const std::exception & e) {
+      RCLCPP_ERROR(get_logger(), "Failed to load YAML file: %s", e.what());
+    }
+  }
 
   // metric subscription
   std::vector<std::string> metric_topic_list;
@@ -74,6 +114,16 @@ void MetricConverter::onDiagnostics(const DiagnosticArray::ConstSharedPtr diagno
     }
     const auto valid_topic_name = removeInvalidTopicString(diag_name);
     getPublisher(valid_topic_name)->publish(createUserDefinedValue(status));
+
+    // Check if this diagnostic is in the list we care about
+    if (isInDiagnosticList(valid_topic_name)) {
+      getPublisher("/diagnostics/scenario_checklist")->publish(createUserDefinedValue(status));
+      if (status.level == DiagnosticStatus::ERROR) {
+        RCLCPP_WARN(
+          get_logger(), "Diagnostic Error - Name: '%s', Status: %d, Message: %s",
+          status.name.c_str(), status.level, status.message.c_str());
+      }
+    }
   }
 }
 
@@ -100,6 +150,17 @@ rclcpp::Publisher<UserDefinedValue>::SharedPtr MetricConverter::getPublisher(
     params_pub_[topic_name] = create_publisher<UserDefinedValue>(topic_name, 1);
   }
   return params_pub_.at(topic_name);
+}
+
+bool MetricConverter::isInDiagnosticList(const std::string & diag_name) const
+{
+  // Check if diagnostic name is in any aggregation list
+  for (const auto & [output_topic, diag_list] : diagnostic_aggregation_map_) {
+    if (std::find(diag_list.begin(), diag_list.end(), diag_name) != diag_list.end()) {
+      return true;
+    }
+  }
+  return false;
 }
 }  // namespace autoware::scenario_simulator_v2_adapter
 
