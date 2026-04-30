@@ -14,16 +14,6 @@ validator:
       description: Minimum distance to lane boundary
       read_only: false
 
-  collision:
-    time:
-      type: double
-      description: The time range to check
-      read_only: false
-    min_value:
-      type: double
-      description: Minimum acceptable time to collision
-      read_only: false
-
   vehicle_constraint:
     max_speed:
       type: double
