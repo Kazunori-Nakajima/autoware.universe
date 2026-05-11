@@ -35,8 +35,10 @@ using autoware::trajectory_modifier::utils::obstacle_stop::get_nearest_pcd_colli
 using autoware::trajectory_modifier::utils::obstacle_stop::get_trajectory_shape;
 using autoware::trajectory_modifier::utils::obstacle_stop::PointCloud;
 
-void ObstacleStop::on_initialize([[maybe_unused]] const MinimumRuleBasedPlannerParams & params)
+void ObstacleStop::on_initialize(const MinimumRuleBasedPlannerParams & params)
 {
+  params_ = params.obstacle_stop;
+
   planning_factor_interface_ =
     std::make_unique<autoware::planning_factor_interface::PlanningFactorInterface>(
       get_node_ptr(), "backup_planner_obstacle_stop");
