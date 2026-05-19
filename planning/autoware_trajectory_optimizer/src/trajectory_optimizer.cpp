@@ -20,7 +20,6 @@
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware_utils/ros/parameter.hpp>
 #include <autoware_utils/ros/update_param.hpp>
-#include <autoware_utils_debug/time_keeper.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 #include <rclcpp/logging.hpp>
@@ -44,8 +43,6 @@ TrajectoryOptimizer::TrajectoryOptimizer(const rclcpp::NodeOptions & options)
 {
   debug_processing_time_detail_pub_ = create_publisher<autoware_utils_debug::ProcessingTimeDetail>(
     "~/debug/processing_time_detail_ms", 1);
-  debug_processing_time_pub_ = create_publisher<autoware_internal_debug_msgs::msg::Float64Stamped>(
-    "~/debug/processing_time_ms", 1);
   time_keeper_ =
     std::make_shared<autoware_utils_debug::TimeKeeper>(debug_processing_time_detail_pub_);
 
@@ -175,18 +172,8 @@ void TrajectoryOptimizer::set_up_params()
   params_.use_mpt_optimizer = get_or_declare_parameter<bool>(*this, "use_mpt_optimizer");
 }
 
-void TrajectoryOptimizer::publish_processing_time_ms(const double processing_time_ms)
-{
-  autoware_internal_debug_msgs::msg::Float64Stamped msg;
-  msg.stamp = get_clock()->now();
-  msg.data = processing_time_ms;
-  debug_processing_time_pub_->publish(msg);
-}
-
 void TrajectoryOptimizer::on_traj([[maybe_unused]] const CandidateTrajectories::ConstSharedPtr msg)
 {
-  stop_watch_ptr_ = std::make_unique<autoware_utils_system::StopWatch<std::chrono::milliseconds>>();
-  stop_watch_ptr_->tic("processing_time");
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
   stop_watch_ptr_ = std::make_unique<autoware_utils_system::StopWatch<std::chrono::milliseconds>>();
   stop_watch_ptr_->tic("processing_time");
@@ -197,7 +184,6 @@ void TrajectoryOptimizer::on_traj([[maybe_unused]] const CandidateTrajectories::
 
   if (!current_odometry_ptr_ || !current_acceleration_ptr_) {
     RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000, "No odometry or acceleration data");
-    publish_processing_time_ms(stop_watch_ptr_->toc("processing_time", true));
     return;
   }
 
